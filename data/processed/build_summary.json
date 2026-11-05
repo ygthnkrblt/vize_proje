@@ -1,0 +1,30 @@
+{
+  "generated_at": "2026-11-04T21:36:49+03:00",
+  "source_file": "2023-04-12_oasst_ready.messages.jsonl.gz",
+  "source_sha256": "286a6e9a5a413b3272ae9c0b5a20d327983dea1c24342ae28cb244a6da65185c",
+  "source_url": "https://huggingface.co/datasets/OpenAssistant/oasst1/resolve/main/2023-04-12_oasst_ready.messages.jsonl.gz",
+  "license": "Apache-2.0",
+  "selected_conversations": 800,
+  "staging_conversations": 800,
+  "messages": 8698,
+  "events": 70,
+  "null_length_chars": 0,
+  "date_min": "2023-01-16T21:17:45.947855+00:00",
+  "date_max": "2023-02-26T02:46:15.121984+00:00",
+  "event_threshold": 0.2,
+  "event_types": {
+    "identity_attack": 1,
+    "sexual_explicit": 10,
+    "toxicity": 59
+  },
+  "generated_conversation_rows": 0,
+  "generated_message_rows": 0,
+  "derived_fields": [
+    "conversation_type",
+    "message_order",
+    "length_chars",
+    "event_type",
+    "severity_1_5",
+    "event_count"
+  ]
+}

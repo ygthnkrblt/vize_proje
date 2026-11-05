@@ -1,0 +1,4 @@
+-- Bu dosyayı proje kök dizininden psql ile çalıştır.
+\copy conversations (id, conversation_type, started_at, message_count, event_count, source_language) FROM 'data/processed/conversations.csv' WITH (FORMAT csv, HEADER true, ENCODING 'UTF8');
+\copy messages (id, conversation_id, sender, message_order, length_chars, sent_at, toxicity_score, severe_toxicity_score, obscene_score, identity_attack_score, insult_score, threat_score, sexual_explicit_score, review_result) FROM 'data/processed/messages.csv' WITH (FORMAT csv, HEADER true, ENCODING 'UTF8');
+\copy events (id, conversation_id, message_id, event_type, severity_1_5, message_order, detected_at, risk_score, detection_source) FROM 'data/processed/events.csv' WITH (FORMAT csv, HEADER true, ENCODING 'UTF8');
