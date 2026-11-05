@@ -3,10 +3,6 @@
 **Ders:** BLP 105 / Veritabanı Yönetim Sistemleri · Güz 2026  
 **Kura:** 8 · **Alan:** Eğitim · **Sistem:** Sohbet asistanı · **YZ bileşeni:** Güvenlik ve olay takibi
 
-Bu depo, vize belgesindeki Hafta 3–5 kapsamına göre hazırlanmıştır. Tam dönem projesi, ERD, JOIN veya dönem sonu YZ bileşeninin veritabanında uygulanması bu teslimin parçası değildir.
-
-## İçerik
-
 | Dosya | Amaç |
 |---|---|
 | `SCENARIO.md` | Problem, ana soru, kullanıcılar ve tablo adayları |
@@ -62,13 +58,6 @@ SELECT COUNT(*) FROM events;
 "/c/Program Files/PostgreSQL/18/bin/psql.exe" -U postgres -d egitim_chatbot -f sql/hafta-05.sql
 ```
 
-## 3. Teslimden önce
-
-1. `data/processed/data_card_run.md` dosyasındaki gerçek satır sayılarını kontrol et.
-2. Hafta 4 ve Hafta 5 SQL dosyalarını kendi PostgreSQL veritabanında çalıştır; hata varsa düzelt.
-3. `reports/rapor.md` içindeki boş sonuç alanlarını kendi sorgu çıktılarından doldur. Çalıştırmadığın bir sorgu için sonuç uydurma.
-4. `AI_BEYAN.md` dosyasını oku ve kendi yaptığın doğrulama adımlarını ekle.
-5. Bu klasörü dersin ortak kaynak reposuna değil, kendi GitHub proje repona koy.
 
 ## Veri ve yöntem sınırı
 
