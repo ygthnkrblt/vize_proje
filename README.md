@@ -3,10 +3,6 @@
 **Ders:** BLP 105 / Veritabanı Yönetim Sistemleri · Güz 2026  
 **Kura:** 8 · **Alan:** Eğitim · **Sistem:** Sohbet asistanı · **YZ bileşeni:** Güvenlik ve olay takibi
 
-Bu depo, vize belgesindeki Hafta 3–5 kapsamına göre hazırlanmıştır. Tam dönem projesi, ERD, JOIN veya dönem sonu YZ bileşeninin veritabanında uygulanması bu teslimin parçası değildir.
-
-## İçerik
-
 | Dosya | Amaç |
 |---|---|
 | `SCENARIO.md` | Problem, ana soru, kullanıcılar ve tablo adayları |
@@ -62,14 +58,86 @@ SELECT COUNT(*) FROM events;
 "/c/Program Files/PostgreSQL/18/bin/psql.exe" -U postgres -d egitim_chatbot -f sql/hafta-05.sql
 ```
 
-## 3. Teslimden önce
-
-1. `data/processed/data_card_run.md` dosyasındaki gerçek satır sayılarını kontrol et.
-2. Hafta 4 ve Hafta 5 SQL dosyalarını kendi PostgreSQL veritabanında çalıştır; hata varsa düzelt.
-3. `reports/rapor.md` içindeki boş sonuç alanlarını kendi sorgu çıktılarından doldur. Çalıştırmadığın bir sorgu için sonuç uydurma.
-4. `AI_BEYAN.md` dosyasını oku ve kendi yaptığın doğrulama adımlarını ekle.
-5. Bu klasörü dersin ortak kaynak reposuna değil, kendi GitHub proje repona koy.
-
 ## Veri ve yöntem sınırı
 
 OASST1 genel amaçlı, çok dilli bir sohbet koleksiyonudur; belirli bir dil okulunun veya gerçek bir eğitim platformunun kayıtları değildir. Bu projede yalnızca İngilizce konuşma ağaçları kullanılır. `conversation_type` kök kullanıcı mesajındaki anahtar kelimelerle türetilen yaklaşık bir sınıftır. Güvenlik olayları, kaynakta bulunan Detoxify skorlarının seçilen eşik üzerindeki işaretleridir; **doğrulanmış ihlal anlamına gelmez**. Gerçek üründe insan incelemesi gerekir.
+
+## Veri Modeli
+
+Kaynak: `SCENARIO.md` tablo adayları ve vize verisi (800 konuşma, 8.698 mesaj, 70 olay). Vizedeki üç tablo aday olarak kaldı; bu ödevde ilişkileri, anahtarları ve türetilmiş sütunları gözden geçirip kesinleştirdim.
+
+### 2.1 Güncel ERD
+
+```mermaid
+erDiagram
+    conversations ||--|{ messages : "içerir"
+    messages ||--o| events : "işaretlenir"
+
+    conversations {
+        text id PK
+        text conversation_type
+        timestamptz started_at
+        text source_language
+    }
+
+    messages {
+        text id PK
+        text conversation_id FK
+        text sender
+        int message_order
+        int length_chars
+        timestamptz sent_at
+        numeric toxicity_score
+        numeric severe_toxicity_score
+        numeric obscene_score
+        numeric identity_attack_score
+        numeric insult_score
+        numeric threat_score
+        numeric sexual_explicit_score
+        boolean review_result
+    }
+
+    events {
+        text id PK
+        text message_id FK, UK
+        text event_type
+        numeric risk_score
+        int severity_1_5
+        text detection_source
+    }
+```
+
+Ek kısıtlar: `messages (conversation_id, message_order)` birlikte tekil; `events.message_id` tekil (bir mesaja en fazla bir olay).
+
+**İlişki cümleleri**
+
+- Bir konuşma (`conversations`), en az bir ve en çok sınırsız sayıda mesaja (`messages`) sahiptir; bir mesaj (`messages`) tam olarak bir konuşmaya (`conversations`) aittir.
+- Bir mesaj (`messages`), en az sıfır ve en çok bir olaya (`events`) sahiptir; bir olay (`events`) tam olarak bir mesaja (`messages`) aittir.
+
+Veride doğrulama: 800 konuşmanın hepsinde en az bir mesaj var; 70 olayın 70'i farklı bir mesaja ait; 746 konuşmada hiç olay yok. M-N ilişki yok, bu yüzden ara tablo gerekmedi.
+
+### 2.2 Normalizasyon notu
+
+>
+> ### 2.2 Normalizasyon
+
+### 2.2 Normalizasyon
+
+| Tablo | Neden bu şekilde? | İlgili normalizasyon formu |
+|---|---|---|
+| `conversations` | Her konuşmanın kendine özgü bir `id` değeri vardır. `conversation_type`, `started_at` ve `source_language` gibi bilgiler bu konuşmaya aittir. `message_count` ve `event_count` sütunları konuşma tablosunda tutulmamıştır; çünkü bu değerler diğer tablolardaki kayıtlar sayılarak hesaplanabilir. Tabloda tutulmaları, mesaj veya olay eklendiğinde ya da silindiğinde sayıların güncellenmesini gerektirerek güncelleme anomalilerine yol açabilirdi. | **3NF:** Konuşmaya ait bilgiler doğrudan konuşmanın birincil anahtarı olan `id` değerine bağlıdır. Başka bir anahtar olmayan sütuna bağlı ek bilgi tutulmaz. |
+| `messages` | Her mesajın kendine özgü bir `id` değeri vardır. Ayrıca `(conversation_id, message_order)` ikilisi benzersizdir. Mesajın sırası ve içeriğe ait özellikleri bu kayıt üzerinden belirlenir. Konuşmanın türü gibi konuşmaya ait bilgiler mesaj tablosunda tekrar tutulmaz. | **2NF:** `(conversation_id, message_order)` birleşik benzersiz anahtardır. `conversation_type` yalnızca `conversation_id` alanına bağlıdır; birleşik anahtarın tamamına bağlı değildir. Bu nedenle `conversation_type` mesaj tablosunda tutulsaydı kısmi bağımlılık oluşurdu. Bu bilgi `conversations` tablosunda tutulur. |
+| `events` | Her olayın kendine özgü bir `id` değeri vardır. `message_id` ile olayın hangi mesaja ait olduğu belirlenir. `event_type`, `risk_score` ve `severity_1_5` gibi bilgiler olayın özellikleridir. `conversation_id` alanı, mesaj üzerinden konuşmaya ulaşılabildiği için olay tablosunda ayrıca tutulmaz. `severity_1_5` alanı ise README'de açıklanan bilinçli normalizasyon istisnası kapsamında değerlendirilir. | **3NF:** `events.id → message_id → conversation_id` şeklinde geçişli bağımlılık oluşabileceğinden `conversation_id` olay tablosunda tekrar tutulmaz. Konuşma bilgisine `message_id` üzerinden ulaşılır. `severity_1_5` alanı ise README'de belirtilen bilinçli istisnadır. |
+
+**Üç normalizasyon formuna kendi tablolarımızdan örnekler:**
+
+- **1NF (Birinci Normal Form) – `messages`:** `toxicity_score` sütununda her mesaj için yalnızca bir sayısal değer tutulur. Bir hücrede birden fazla skor bulunmadığı için 1NF sağlanır.
+- **2NF (İkinci Normal Form) – `messages`:** `(conversation_id, message_order)` birleşik benzersiz anahtardır. `conversation_type` yalnızca `conversation_id` alanına bağlı olduğundan mesaj tablosunda tutulması kısmi bağımlılık yaratırdı. Bu nedenle `conversation_type`, `conversations` tablosunda tutulur.
+- **3NF (Üçüncü Normal Form) – `events`:** `events.id` olayın `message_id` değerini belirler; `message_id` ise mesajın `conversation_id` değerini belirler. Böylece `events.id → message_id → conversation_id` geçişli bağımlılığı oluşur. Bu nedenle `conversation_id` `events` tablosundan çıkarılır ve konuşma bilgisine `messages` üzerinden ulaşılır.
+
+
+### 2.3 İki JOIN sorusu
+>
+- **Soru 1 (INNER JOIN):**  Güvenlik olayı olarak işaretlenen mesajları ve bu mesajların olay türlerini listelemek için messages ve events tabloları nasıl birleştirilmelidir? Birleşme koşulu messages.id = events.message_id olmalıdır. Yalnızca güvenlik olayı bulunan mesajları listelemek istediğimiz için INNER JOIN kullanılmalıdır.
+
+- **Soru 2 (LEFT JOIN):** Hiç güvenlik olayı bulunmayan konuşmalar da dahil olmak üzere tüm konuşmaları, mesajlarını ve varsa bu mesajlara ait güvenlik olaylarını listelemek için conversations, messages ve events tabloları nasıl birleştirilmelidir? İlk birleşme conversations.id = messages.conversation_id, ikinci birleşme ise messages.id = events.message_id koşuluyla yapılmalıdır. Tüm konuşmaların ve mesajların sonuçlarda kalmasını istediğimiz için LEFT JOIN kullanılmalıdır. INNER JOIN kullanılsaydı güvenlik olayı bulunmayan mesajlar ve bunların ait olduğu konuşmalar sonuçlardan elenebilirdi.
